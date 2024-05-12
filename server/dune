@@ -1,0 +1,4 @@
+(executable
+ (name server)
+ (public_name server)
+ (libraries cohttp-lwt-unix conduit-lwt))
