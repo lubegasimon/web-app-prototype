@@ -1,9 +1,0 @@
-lib: [
-  "_build/install/default/lib/webserver/META"
-  "_build/install/default/lib/webserver/dune-package"
-  "_build/install/default/lib/webserver/opam"
-]
-bin: [
-  "_build/install/default/bin/client"
-  "_build/install/default/bin/server"
-]
