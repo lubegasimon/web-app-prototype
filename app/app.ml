@@ -32,27 +32,3 @@ let server =
   in
   server >>= fun _ -> Lwt_io.printf "Server listening on port 8000\n"
 (*FIXME: this is not printed on terminal when the server starts *)
-
-(* TODO: Understand this debug report, imported from https://github.com/mirage/ocaml-cohttp#debugging *)
-let reporter ppf =
-  let report src level ~over k msgf =
-    let k _ =
-      over ();
-      k ()
-    in
-    let with_metadata header _tags k ppf fmt =
-      Format.kfprintf k ppf
-        ("%a[%a]: " ^^ fmt ^^ "\n%!")
-        Logs_fmt.pp_header (level, header)
-        Fmt.(styled `Magenta string)
-        (Logs.Src.name src)
-    in
-    msgf @@ fun ?header ?tags fmt -> with_metadata header tags k ppf fmt
-  in
-  { Logs.report }
-
-let () =
-  Fmt_tty.setup_std_outputs ~style_renderer:`Ansi_tty ~utf_8:true ();
-  Logs.set_reporter (reporter Fmt.stderr);
-  Logs.set_level ~all:true (Some Logs.Debug);
-  Lwt_main.run server

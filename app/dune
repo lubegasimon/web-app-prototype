@@ -1,0 +1,5 @@
+(library
+ (name app)
+ (libraries cohttp-lwt-unix tyxml yojson ppx_deriving_yojson)
+ (preprocess
+  (pps ppx_deriving_yojson)))

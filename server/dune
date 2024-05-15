@@ -1,6 +1,0 @@
-(executable
- (name server)
- (public_name server)
- (libraries fmt.tty cohttp-lwt-unix tyxml yojson ppx_deriving_yojson)
- (preprocess
-  (pps ppx_deriving_yojson)))
