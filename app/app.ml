@@ -13,9 +13,8 @@ let split_path path =
   let segments = String.split_on_char '/' path in
   List.filter (fun seg -> seg <> "") segments
 
-let ( let* ) = Lwt.bind
-
 let handle_form_post body =
+  let ( let* ) = Lwt.bind in
   let* body_str = Cohttp_lwt.Body.to_string body in
   let form_data = Uri.query_of_encoded body_str in
   let id = List.assoc "id" form_data |> List.hd in
