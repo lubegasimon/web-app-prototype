@@ -6,6 +6,4 @@ module Datastore = struct
 
   let update_user (name : string) (id : string) =
     Hashtbl.replace hashtbl name id
-
-  let length = Hashtbl.length hashtbl
 end
