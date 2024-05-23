@@ -33,11 +33,8 @@ let use_connection (module Conn : Caqti_lwt.CONNECTION) =
   | Error err -> Lwt.return (Error err)
 
 let uri =
-  (* FIXME: validate uri instead of using default uri to connect to a local postgresql instance *)
-  match Sys.getenv_opt "" with
-  | Some uri ->
-      Printf.printf "Uri: %s\n" uri;
-      Uri.of_string uri
+  match Sys.getenv_opt "DATABASE_URI" with
+  | Some uri -> Uri.of_string uri
   | None -> Uri.of_string "Postgresql://"
 
 let main =
