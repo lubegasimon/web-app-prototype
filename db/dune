@@ -1,0 +1,6 @@
+(executable
+ (name db)
+ (public_name db)
+ (libraries cmdliner caqti caqti-driver-postgresql caqti-lwt lwt)
+ (preprocess
+  (pps lwt_ppx)))
