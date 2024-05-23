@@ -1,7 +1,6 @@
 open Lwt
 open Cohttp_lwt_unix
 open Tyxml
-open Datastore
 
 let respond_string body = Server.respond_string ~status:`OK ~body ()
 
@@ -21,10 +20,8 @@ let handle_form_post body =
   (* TODO: Error handling: when [name] is not the same as [a_name], an internal server error is
      printed, I find that not helpful enough *)
   let name = List.assoc "name" form_data |> List.hd in
-  Datastore.create_user id name;
-  let user = Hashtbl.find Datastore.hashtbl id in
   let response_body =
-    Format.sprintf "User %s with ID %s created successfully!" user id
+    Format.sprintf "User %s with ID %s created successfully!" name id
   in
   respond_string response_body
 
@@ -37,8 +34,6 @@ let server =
     | `GET, [] -> respond_ok Content.home
     | `GET, [ "signup" ] -> respond_ok Content.signup
     | `GET, [ "create_acc" ] -> respond_ok Content.create_user
-    | `GET, [ "users_len" ] ->
-        respond_string (Hashtbl.length Datastore.hashtbl |> string_of_int)
     | `POST, [ "add_user" ] -> handle_form_post body
     | _ -> Server.respond_not_found ()
   in

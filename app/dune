@@ -1,5 +1,5 @@
 (library
  (name app)
- (libraries cohttp-lwt-unix tyxml datastore)
+ (libraries cohttp-lwt-unix tyxml)
  (preprocess
   (pps tyxml-ppx)))
