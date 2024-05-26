@@ -12,7 +12,7 @@ let split_path path =
   let segments = String.split_on_char '/' path in
   List.filter (fun seg -> seg <> "") segments
 
-let handle_form_post body =
+let form_handler body =
   let ( let* ) = Lwt.bind in
   let return = Lwt.return in
   let* body_str = Cohttp_lwt.Body.to_string body in
@@ -46,7 +46,7 @@ let server =
     match (meth, split_path path) with
     | `GET, [] -> respond_ok Form.home
     | `GET, [ "signup" ] -> respond_ok Form.signup
-    | `POST, [ "create_user" ] -> handle_form_post body
+    | `POST, [ "create_user" ] -> form_handler body
     | _ -> Server.respond_not_found ()
   in
 
