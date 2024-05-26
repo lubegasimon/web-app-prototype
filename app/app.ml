@@ -16,13 +16,28 @@ let handle_form_post body =
   let ( let* ) = Lwt.bind in
   let* body_str = Cohttp_lwt.Body.to_string body in
   let form_data = Uri.query_of_encoded body_str in
-  let id = List.assoc "id" form_data |> List.hd in
+  let field_value field_name = List.assoc field_name form_data |> List.hd in
   (* TODO: Error handling: when [name] is not the same as [a_name], an internal server error is
      printed, I find that not helpful enough *)
-  let name = List.assoc "name" form_data |> List.hd in
-  let response_body =
-    Format.sprintf "User %s with ID %s created successfully!" name id
+  let name = field_value "name" in
+  let email = field_value "email" in
+  let password = field_value "password" in
+  let confirm_password = field_value "confirm_password" in
+  let create_user (module Conn : Caqti_lwt.CONNECTION) =
+    match password = confirm_password with
+    | true -> (
+        let* user = Model.User.create_user (module Conn) name email password in
+        match user with
+        | Ok () ->
+            Format.sprintf "User %s created successfully!\n" name |> Lwt.return
+        | Error err ->
+            Format.sprintf "Failed to create user:%s: %s\n" name
+              (Caqti_error.show err)
+            |> Lwt.return)
+    | false -> Format.sprintf "Passwords don't match!\n" |> Lwt.return
   in
+  let _ = create_user in
+  let response_body = Format.sprintf "User %s created successfully!\n" name in
   respond_string response_body
 
 let server =
@@ -31,10 +46,9 @@ let server =
     let meth = Request.meth req in
     let path = Uri.path uri in
     match (meth, split_path path) with
-    | `GET, [] -> respond_ok Content.home
-    | `GET, [ "signup" ] -> respond_ok Content.signup
-    | `GET, [ "create_acc" ] -> respond_ok Content.create_user
-    | `POST, [ "add_user" ] -> handle_form_post body
+    | `GET, [] -> respond_ok Form.home
+    | `GET, [ "signup" ] -> respond_ok Form.signup
+    | `POST, [ "create_user" ] -> handle_form_post body
     | _ -> Server.respond_not_found ()
   in
 

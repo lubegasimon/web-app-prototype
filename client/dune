@@ -1,0 +1,5 @@
+(library
+ (name form)
+ (libraries tyxml)
+ (preprocess
+  (pps tyxml-ppx)))
