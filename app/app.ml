@@ -14,6 +14,7 @@ let split_path path =
 
 let handle_form_post body =
   let ( let* ) = Lwt.bind in
+  let return = Lwt.return in
   let* body_str = Cohttp_lwt.Body.to_string body in
   let form_data = Uri.query_of_encoded body_str in
   let field_value field_name = List.assoc field_name form_data |> List.hd in
@@ -23,21 +24,18 @@ let handle_form_post body =
   let email = field_value "email" in
   let password = field_value "password" in
   let confirm_password = field_value "confirm_password" in
-  let create_user (module Conn : Caqti_lwt.CONNECTION) =
+  let* response =
     match password = confirm_password with
     | true -> (
-        let* user = Model.User.create_user (module Conn) name email password in
-        match user with
+        Db.with_connection (fun conn ->
+            Model.User.create_user conn name email password)
+        >>= function
         | Ok () ->
-            Format.sprintf "User %s created successfully!\n" name |> Lwt.return
-        | Error err ->
-            Format.sprintf "Failed to create user:%s: %s\n" name
-              (Caqti_error.show err)
-            |> Lwt.return)
-    | false -> Format.sprintf "Passwords don't match!\n" |> Lwt.return
+            Format.sprintf "User %s created successfully!\n" name |> return
+        | Error err -> Format.sprintf "%s\n" (Caqti_error.show err) |> return)
+    | false -> Format.sprintf "Passwords don't match!\n" |> return
   in
-  let _ = create_user in
-  let response_body = Format.sprintf "User %s created successfully!\n" name in
+  let response_body = Format.sprintf "%s\n" response in
   respond_string response_body
 
 let server =
