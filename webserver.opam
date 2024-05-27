@@ -1,0 +1,39 @@
+opam-version: "0.1"
+
+synopsis: "A simple web app"
+maintainer: "Simon Lubega <lubegasimon73@gmail.com>"
+authors: [ "Simon Lubega <lubegasimon73@gmail.com>" ]
+license: "MIT"
+tags: ["web" "server"]
+
+homepage: "https://github.com/lubegasimon/web-server-prototype/"
+dev-repo: "https://github.com/lubegasimon/web-server-prototype/"
+bug-reports: "https://github.com/lubegasimon/web-server-prototype/issues"
+
+depends: [
+  "ocaml" { >= "4.13.1" }
+  "dune" { >= "2.9" }
+  "lwt" { >= "5.3.0" }
+  "caqti" { >= "1.6.0" }
+  "caqti-lwt" { >= "1.6.0" }
+  "caqti-driver-postgresql" { >= "1.6.0" }
+  "logs" {>= "0.7.0" }
+  "cmdliner" { >= "1.0.0"}
+  "hacl-star" { >= "0.4.4" }
+  "yaml" { >= "2.1.0" }
+  "dream" { >= "1.0.0~alpha4" }
+  "cohttp-lwt-unix" { >= "5.0.0" }
+  "tyxml" { >= "4.5.0" }
+  "yojson" { >= "1.7.0" }
+  "ppx_yojson_conv" { >= "0.14.0" }
+  "omd" { >= "2.0.0~alpha2" }
+  "odoc" {with-doc}
+  "alcotest" {with-test}
+]
+
+build: [
+  [ "dune" "subst" ]
+  [ "dune" "build" "-p" name "-j" jobs ]
+  [ "dune" "runtest" "-p" name ] {with-test}
+  [ "dune" "build" "@doc" "-p" name ] {with-doc}
+]
