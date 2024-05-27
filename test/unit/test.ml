@@ -1,14 +1,17 @@
 (* A module with functions to test *)
 module To_test = struct
-  let lowercase = String.lowercase_ascii
+  let split_path = App.split_path
 end
 
 (* The tests *)
-let test_lowercase () =
-  Alcotest.(check string) "same string" "hello!" (To_test.lowercase "hELLO!")
+let test_split_path () =
+  Alcotest.(check (list string))
+    "same lists"
+    [ "http:"; "localhost:8000"; "signup" ]
+    (To_test.split_path "http://localhost:8000/signup/")
 
 (* Run it *)
 let () =
   let open Alcotest in
-  run "Utils"
-    [ ("string-case", [ test_case "Lower case" `Quick test_lowercase ]) ]
+  run "Functions"
+    [ ("split_path_case", [ test_case "Split path" `Quick test_split_path ]) ]
