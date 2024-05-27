@@ -8,6 +8,7 @@ type signup_form = {
   password : string;
   confirm_password : string;
 }
+[@@deriving eq]
 
 let respond_string body = Server.respond_string ~status:`OK ~body ()
 

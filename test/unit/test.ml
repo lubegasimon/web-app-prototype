@@ -6,17 +6,13 @@ module To_test = struct
   let field_values = field_values
 end
 
-let signup_form_test fmt form =
+let pp_signup_form fmt form =
   let { App.name; email; password; confirm_password } = form in
   Format.fprintf fmt "{name: %s; email: %s; password: %s; confirm_password: %s}"
     name email password confirm_password
 
-let equal (form1 : App.signup_form) (form2 : App.signup_form) =
-  form1.name = form2.name && form1.email = form2.email
-  && form1.password = form2.password
-  && form1.confirm_password = form2.confirm_password
-
-let signup_form_testable = Alcotest.testable signup_form_test equal
+let equal_form form1 form2 = App.equal_signup_form form1 form2
+let signup_form_testable = Alcotest.testable pp_signup_form equal_form
 
 (* The tests *)
 let test_split_path () =
