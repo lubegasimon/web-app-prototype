@@ -2,6 +2,13 @@ open Lwt
 open Cohttp_lwt_unix
 open Tyxml
 
+type signup_form = {
+  name : string;
+  email : string;
+  password : string;
+  confirm_password : string;
+}
+
 let respond_string body = Server.respond_string ~status:`OK ~body ()
 
 let respond_ok html =
@@ -12,11 +19,7 @@ let split_path path =
   let segments = String.split_on_char '/' path in
   List.filter (fun seg -> seg <> "") segments
 
-let form_handler body =
-  let ( let* ) = Lwt.bind in
-  let return = Lwt.return in
-  let* body_str = Cohttp_lwt.Body.to_string body in
-  let form_data = Uri.query_of_encoded body_str in
+let field_values form_data =
   let field_value field_name = List.assoc field_name form_data |> List.hd in
   (* TODO: Error handling: when [name] is not the same as [a_name], an internal server error is
      printed, I find that not helpful enough *)
@@ -24,6 +27,14 @@ let form_handler body =
   let email = field_value "email" in
   let password = field_value "password" in
   let confirm_password = field_value "confirm_password" in
+  { name; email; password; confirm_password }
+
+let form_handler body =
+  let ( let* ) = Lwt.bind in
+  let return = Lwt.return in
+  let* body_str = Cohttp_lwt.Body.to_string body in
+  let form_data = Uri.query_of_encoded body_str in
+  let { name; email; password; confirm_password } = field_values form_data in
   let* response =
     match password = confirm_password with
     | true -> (
