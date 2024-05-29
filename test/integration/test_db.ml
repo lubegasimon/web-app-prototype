@@ -1,28 +1,24 @@
 open Lwt.Infix
 
-module To_test = struct
-  let db_uri = "TEST_DATABASE_URI"
+let db_uri = "TEST_DATABASE_URI"
 
-  let create_user name email password =
-    Db.with_connection
-      (fun conn -> Model.User.create_user conn name email password)
-      db_uri
+let create_user name email password =
+  Db.with_connection
+    (fun conn -> Model.User.create_user conn name email password)
+    db_uri
 
-  let get_user_by_email email =
-    Db.with_connection (fun conn -> Model.User.find_user conn email) db_uri
-end
+let get_user_by_email email =
+  Db.with_connection (fun conn -> Model.User.find_user conn email) db_uri
 
 let test_if_user_created _ () =
   let expected_name = "johndoe" in
   let email = "johndoe@gmail.com" in
   let password = "johndoe" in
-  To_test.create_user expected_name email password >>= function
+  create_user expected_name email password >>= function
   | Ok _ -> (
       (* Ensure that the user is created *)
-      To_test.get_user_by_email email
-      >>= function
-      | Ok (Some name) ->
-          let actual_name = name in
+      get_user_by_email email >>= function
+      | Ok (Some actual_name) ->
           Alcotest.(check string) "same name" expected_name actual_name;
           Lwt.return_unit
       | Ok None -> Alcotest.fail "User not found in the database!\n"
