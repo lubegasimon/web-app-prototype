@@ -39,8 +39,9 @@ let form_handler body =
   let* response =
     match password = confirm_password with
     | true -> (
-        Db.with_connection (fun conn ->
-            Model.User.create_user conn name email password)
+        Db.with_connection
+          (fun conn -> Model.User.create_user conn name email password)
+          "DATABASE_URI"
         >>= function
         | Ok () ->
             Format.sprintf "User %s created successfully!\n" name |> return
