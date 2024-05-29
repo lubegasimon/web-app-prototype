@@ -66,5 +66,6 @@ let server =
   let server =
     Server.create ~mode:(`TCP (`Port 8000)) (Server.make ~callback:router ())
   in
-  server >>= fun _ -> Lwt_io.printf "Server listening on port 8000\n"
+  server >>= fun _ ->
+  Format.printf "Server listening on port 8000\n" |> Lwt.return
 (*FIXME: this is not printed on terminal when the server starts *)

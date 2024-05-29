@@ -23,7 +23,7 @@ let test_if_user_created _ () =
           Lwt.return_unit
       | Ok None -> Alcotest.fail "User not found in the database!\n"
       | Error err ->
-          Lwt_io.printf "Error fetching user: %s\n" (Caqti_error.show err))
+          Alcotest.failf "Error fetching user: %s\n" (Caqti_error.show err))
   | Error err ->
       Alcotest.failf "Error creating user: %s\n" (Caqti_error.show err)
 
