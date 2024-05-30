@@ -16,5 +16,5 @@ end
 let create_user (module Db : Caqti_lwt.CONNECTION) name email password =
   Db.exec Q.create_user (name, email, password)
 
-let find_user (module Db : Caqti_lwt.CONNECTION) =
+let find_user_by_email (module Db : Caqti_lwt.CONNECTION) =
   Db.find_opt Q.find_user_by_email

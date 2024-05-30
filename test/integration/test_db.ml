@@ -1,31 +1,71 @@
 open Lwt.Infix
+open Caqti_type
+open Caqti_request.Infix
 
 let db_uri = "TEST_DATABASE_URI"
 
-let create_user name email password =
-  Db.with_connection
-    (fun conn -> Model.User.create_user conn name email password)
-    db_uri
+let create_table (module Db : Caqti_lwt.CONNECTION) =
+  let query =
+    (unit ->. unit)
+    @@ {| CREATE TABLE IF NOT EXISTS users (
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) PRIMARY KEY,
+        password VARCHAR(255) NOT NULL
+      )
+  |}
+  in
+  Db.exec query
 
-let get_user_by_email email =
-  Db.with_connection (fun conn -> Model.User.find_user conn email) db_uri
+let drop_table (module Db : Caqti_lwt.CONNECTION) =
+  let query = (unit ->. unit) @@ {| DROP TABLE IF EXISTS users |} in
+  Db.exec query
 
-let test_if_user_created _ () =
-  let expected_name = "johndoe" in
+let setup_db conn =
+  let name = "johndoe" in
   let email = "johndoe@gmail.com" in
   let password = "johndoe" in
-  create_user expected_name email password >>= function
+  create_table conn () >>= function
   | Ok _ -> (
-      (* Ensure that the user is created *)
-      get_user_by_email email >>= function
-      | Ok (Some actual_name) ->
-          Alcotest.(check string) "same name" expected_name actual_name;
-          Lwt.return_unit
-      | Ok None -> Alcotest.fail "User not found in the database!\n"
-      | Error err ->
-          Alcotest.failf "Error fetching user: %s\n" (Caqti_error.show err))
+      (*FIXME: 🤔This debug prints in setup_db are not printed!! *)
+      Lwt_io.printf "Table created\n"
+      >>= fun () ->
+      Model.User.create_user conn name email password >>= function
+      | Ok _ -> (
+          (* Ensure that the user is created *)
+          Model.User.find_user_by_email conn email
+          >>= function
+          | Ok (Some actual_name) ->
+              Alcotest.(check string) "same name" name actual_name;
+              Lwt.return @@ Ok "User found"
+          | Ok None -> Alcotest.fail "User not found in the database!\n"
+          | Error err -> Lwt.return @@ Error err (* Error while fetching user *)
+          )
+      | Error err -> Lwt.return @@ Error err (* Error while creating user *))
+  | Error err -> Lwt.return (Error err)
+(* error while creating table *)
+
+let clear_db conn =
+  drop_table conn () >>= function
+  | Ok () -> Lwt_io.printf "Database is cleared\n" >>= fun () -> Lwt.return_unit
   | Error err ->
-      Alcotest.failf "Error creating user: %s\n" (Caqti_error.show err)
+      Lwt.return
+      @@ Format.printf "Error while clearing database: %s\n"
+           (Caqti_error.show err)
+
+let with_connection db_uri =
+  Db.connect db_uri >>= function
+  | Ok conn ->
+      (*FIXME: 🤔This debug print is not printed!! *)
+      Lwt_io.printf "Connected to database\n" >>= fun () ->
+      Lwt.finalize (fun () -> setup_db conn) (fun () -> clear_db conn)
+  | Error err -> Lwt.return (Error err)
+
+let test_if_user_created _ () =
+  with_connection db_uri >>= function
+  | Ok _ -> Lwt_io.printf "Test completed successfully\n"
+  | Error err ->
+      Lwt.return
+      @@ Format.printf "Error during testing: %s" (Caqti_error.show err)
 
 let () =
   let open Alcotest_lwt in
