@@ -62,7 +62,6 @@ let server =
     | `POST, [ "create_user" ] -> form_handler body
     | _ -> Server.respond_not_found ()
   in
-
   let server =
     Server.create ~mode:(`TCP (`Port 8000)) (Server.make ~callback:router ())
   in
