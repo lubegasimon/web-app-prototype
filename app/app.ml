@@ -51,19 +51,19 @@ let form_handler body =
   let response_body = Format.sprintf "%s\n" response in
   respond_string response_body
 
+let callback _conn req body =
+  let uri = Request.uri req in
+  let meth = Request.meth req in
+  let path = Uri.path uri in
+  match (meth, split_path path) with
+  | `GET, [] -> respond_ok Form.home
+  | `GET, [ "signup" ] -> respond_ok Form.signup
+  | `POST, [ "create_user" ] -> form_handler body
+  | _ -> Server.respond_not_found ()
+
 let server =
-  let router _conn req body =
-    let uri = Request.uri req in
-    let meth = Request.meth req in
-    let path = Uri.path uri in
-    match (meth, split_path path) with
-    | `GET, [] -> respond_ok Form.home
-    | `GET, [ "signup" ] -> respond_ok Form.signup
-    | `POST, [ "create_user" ] -> form_handler body
-    | _ -> Server.respond_not_found ()
-  in
   let server =
-    Server.create ~mode:(`TCP (`Port 8000)) (Server.make ~callback:router ())
+    Server.create ~mode:(`TCP (`Port 8000)) (Server.make ~callback ())
   in
   server >>= fun _ ->
   Format.printf "Server listening on port 8000\n" |> Lwt.return
