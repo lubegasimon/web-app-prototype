@@ -2,3 +2,4 @@ _build
 
 .env
 .test_env
+.e2e_test_env

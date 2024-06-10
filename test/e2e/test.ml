@@ -41,7 +41,7 @@ let form_handler body =
     | true -> (
         Db.with_connection
           (fun conn -> Model.User.create_user conn name email password)
-          "DATABASE_URI"
+          "E2E_TEST_DATABASE_URI"
         >>= function
         | Ok () -> Format.sprintf "User %s created successfully!" name |> return
         | Error err -> Format.sprintf "%s\n" (Caqti_error.show err) |> return)
