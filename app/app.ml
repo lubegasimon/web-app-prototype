@@ -31,23 +31,20 @@ let field_values form_data =
   { name; email; password; confirm_password }
 
 let form_handler body =
-  let ( let* ) = Lwt.bind in
-  let return = Lwt.return in
-  let* body_str = Cohttp_lwt.Body.to_string body in
+  Cohttp_lwt.Body.to_string body >>= fun body_str ->
   let form_data = Uri.query_of_encoded body_str in
   let { name; email; password; confirm_password } = field_values form_data in
-  let* response =
-    match password = confirm_password with
-    | true -> (
-        Db.with_connection
-          (fun conn -> Model.User.create_user conn name email password)
-          "DATABASE_URI"
-        >>= function
-        | Ok () ->
-            Format.sprintf "User %s created successfully!\n" name |> return
-        | Error err -> Format.sprintf "%s\n" (Caqti_error.show err) |> return)
-    | false -> Format.sprintf "Passwords don't match!\n" |> return
-  in
+  (match password = confirm_password with
+  | true -> (
+      Db.with_connection
+        (fun conn -> Model.User.create_user conn name email password)
+        "DATABASE_URI"
+      >>= function
+      | Ok () ->
+          Lwt.return @@ Format.sprintf "User %s created successfully!\n" name
+      | Error err -> Lwt.return @@ Format.sprintf "%s\n" (Caqti_error.show err))
+  | false -> Lwt.return @@ Format.sprintf "Passwords don't match!\n")
+  >>= fun response ->
   let response_body = Format.sprintf "%s\n" response in
   respond_string response_body
 

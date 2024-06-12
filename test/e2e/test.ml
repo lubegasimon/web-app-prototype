@@ -30,24 +30,21 @@ let test_get_signup _ () =
   Lwt.return ()
 
 let form_handler body =
-  let ( let* ) = Lwt.bind in
-  let return = Lwt.return in
   let form_data = Uri.query_of_encoded body in
   let { App.name; email; password; confirm_password } =
     App.field_values form_data
   in
-  let* response =
-    match password = confirm_password with
-    | true -> (
-        Db.with_connection
-          (fun conn -> Model.User.create_user conn name email password)
-          "E2E_TEST_DATABASE_URI"
-        >>= function
-        | Ok () -> Format.sprintf "User %s created successfully!" name |> return
-        | Error err -> Format.sprintf "%s\n" (Caqti_error.show err) |> return)
-    | false -> Format.sprintf "Passwords don't match!\n" |> return
-  in
-  Format.sprintf "%s\n" response |> Lwt.return
+  (match password = confirm_password with
+  | true -> (
+      Db.with_connection
+        (fun conn -> Model.User.create_user conn name email password)
+        "E2E_TEST_DATABASE_URI"
+      >>= function
+      | Ok () ->
+          Lwt.return @@ Format.sprintf "User %s created successfully!" name
+      | Error err -> Lwt.return @@ Format.sprintf "%s\n" (Caqti_error.show err))
+  | false -> Lwt.return @@ Format.sprintf "Passwords don't match!\n")
+  >>= fun response -> Lwt.return @@ Format.sprintf "%s\n" response
 
 let body =
   let body =
