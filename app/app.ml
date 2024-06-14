@@ -11,6 +11,7 @@ type signup_form = {
 [@@deriving eq]
 
 let respond_string body = Server.respond_string ~status:`OK ~body ()
+let respond_redirect s = Server.respond_redirect ~uri:(Uri.of_string s) ()
 
 let respond_ok html =
   let body = html |> Format.asprintf "%a" Html._pp_elt in
@@ -34,27 +35,34 @@ let form_handler body =
   Cohttp_lwt.Body.to_string body >>= fun body_str ->
   let form_data = Uri.query_of_encoded body_str in
   let { name; email; password; confirm_password } = field_values form_data in
-  (match password = confirm_password with
+  match password = confirm_password with
   | true -> (
       Db.with_connection
         (fun conn -> Model.User.create_user conn name email password)
         "DATABASE_URI"
       >>= function
       | Ok () ->
-          Lwt.return @@ Format.sprintf "User %s created successfully!\n" name
-      | Error err -> Lwt.return @@ Format.sprintf "%s\n" (Caqti_error.show err))
-  | false -> Lwt.return @@ Format.sprintf "Passwords don't match!\n")
-  >>= fun response ->
-  let response_body = Format.sprintf "%s\n" response in
-  respond_string response_body
+          respond_redirect
+            (Format.sprintf "/?message=You are signed up as %s!\n" name)
+      | Error err ->
+          respond_redirect
+            (Format.sprintf "/signup?error=%s\n" (Caqti_error.show err)))
+  | false ->
+      respond_redirect
+        (* we might not need to redirect to signup here, rather to stay on the form page *)
+        "/signup?error=Passwords don't match!\n"
 
 let callback _conn req body =
   let uri = Request.uri req in
   let meth = Request.meth req in
   let path = Uri.path uri in
   match (meth, split_path path) with
-  | `GET, [] -> respond_ok Form.home
-  | `GET, [ "signup" ] -> respond_ok Form.signup
+  | `GET, [] ->
+      let message = Uri.get_query_param uri "message" in
+      respond_ok (Form.home message)
+  | `GET, [ "signup" ] ->
+      let error = Uri.get_query_param uri "error" in
+      respond_ok (Form.signup error)
   | `POST, [ "create_user" ] -> form_handler body
   | _ -> Server.respond_not_found ()
 
