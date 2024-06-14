@@ -75,7 +75,8 @@ let callback _conn req _body =
   match (meth, App.split_path path) with
   | `GET, [] -> App.respond_ok Form.home
   | `GET, [ "signup" ] -> App.respond_ok Form.signup
-  | `POST, [ "create_user" ] -> body >>= fun body -> App.respond_string body
+  | `POST, [ "create_user" ] ->
+      body >>= fun body -> Server.respond_string ~status:`OK ~body ()
   | _ -> Server.respond_not_found ()
 
 (* A mock server *)

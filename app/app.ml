@@ -10,13 +10,6 @@ type signup_form = {
 }
 [@@deriving eq]
 
-let respond_string body = Server.respond_string ~status:`OK ~body ()
-let respond_redirect s = Server.respond_redirect ~uri:(Uri.of_string s) ()
-
-let respond_ok html =
-  let body = html |> Format.asprintf "%a" Html._pp_elt in
-  respond_string body
-
 let split_path path =
   let segments = String.split_on_char '/' path in
   List.filter (fun seg -> seg <> "") segments
@@ -35,6 +28,7 @@ let form_handler body =
   Cohttp_lwt.Body.to_string body >>= fun body_str ->
   let form_data = Uri.query_of_encoded body_str in
   let { name; email; password; confirm_password } = field_values form_data in
+  let respond_redirect s = Server.respond_redirect ~uri:(Uri.of_string s) () in
   match password = confirm_password with
   | true -> (
       Db.with_connection
@@ -47,11 +41,15 @@ let form_handler body =
             just redirecting back to /signup form give the users no
             idea about what's wrong! *)
           respond_redirect "/signup")
-  | false -> 
-    (* FIXME: handle error: "Passwords don't match!\n" appropriately because
-            just redirecting back to /signup form give the users no
-            idea about what's wrong! *)
-            respond_redirect "/signup"
+  | false ->
+      (* FIXME: handle error: "Passwords don't match!\n" appropriately because
+              just redirecting back to /signup form give the users no
+              idea about what's wrong! *)
+      respond_redirect "/signup"
+
+let respond_ok html =
+  let body = html |> Format.asprintf "%a" Html._pp_elt in
+  Server.respond_string ~status:`OK ~body ()
 
 let callback _conn req body =
   let uri = Request.uri req in
