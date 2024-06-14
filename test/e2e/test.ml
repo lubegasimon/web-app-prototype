@@ -73,12 +73,8 @@ let callback _conn req _body =
   let meth = Request.meth req in
   let path = Uri.path uri in
   match (meth, App.split_path path) with
-  | `GET, [] ->
-      let message = Uri.get_query_param uri "message" in
-      App.respond_ok (Form.home message)
-  | `GET, [ "signup" ] ->
-      let error = Uri.get_query_param uri "error" in
-      App.respond_ok (Form.signup error)
+  | `GET, [] -> App.respond_ok Form.home
+  | `GET, [ "signup" ] -> App.respond_ok Form.signup
   | `POST, [ "create_user" ] -> body >>= fun body -> App.respond_string body
   | _ -> Server.respond_not_found ()
 

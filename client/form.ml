@@ -3,32 +3,16 @@ open Html
 
 let title = title (txt "Expense tracker")
 
-let home message =
-  let%html header =
+let home =
+  let%html home =
     {|
       <div>
         Hello, Welcome to expense tracker!
+        <br>
+        <div><a href = 'signup'> Sign up </a> </div>
       </div>
    |}
   in
-  html (head title [])
-    (body
-       [
-         header;
-         (match message with
-         | Some msg -> p [ txt msg ]
-         | None ->
-             let%html signup =
-               {|<div><a href = 'signup'> Sign up </a> </div>|}
-             in
-             signup);
-       ])
+  html (head title []) (body [ home ])
 
-let signup error =
-  html (head title [])
-    (body
-       [
-         (match error with
-         | Some err -> p ~a:[ a_style "color: red;" ] [ txt err ]
-         | None -> Signup.form);
-       ])
+let signup = html (head title []) (body [ Signup.form ])
