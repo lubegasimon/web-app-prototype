@@ -31,19 +31,29 @@ let form_handler body =
   let respond_redirect s = Server.respond_redirect ~uri:(Uri.of_string s) () in
   match password = confirm_password with
   | true -> (
+      (*TODO: We are establishing 2 connection in the same block, can we use one? *)
       Db.with_connection
-        (fun conn -> Model.User.create_user conn name email password)
+        (fun conn -> Model.User.find_user_by_email conn email)
         "DATABASE_URI"
-      >>= function
-      | Ok () -> respond_redirect "/"
-      | Error _ ->
-          (*FIXME: handle error: (Caqti_error.show err) appropriately because
-            just redirecting back to /signup form give the users no
-            idea about what's wrong! *)
-          respond_redirect "/signup")
+      >>= fun res ->
+      match res with
+      | Ok _ ->
+          respond_redirect
+            "/login" (* Email already used, redirect to login form *)
+      | _ -> (
+          Db.with_connection
+            (fun conn -> Model.User.create_user conn name email password)
+            "DATABASE_URI"
+          >>= function
+          | Ok () -> respond_redirect "/"
+          | Error _ ->
+              (*FIXME: handle error: (Caqti_error.show err) appropriately because
+                just redirecting back to /signup form gives the users no
+                idea about what's wrong! *)
+              respond_redirect "/signup"))
   | false ->
       (* FIXME: handle error: "Passwords don't match!\n" appropriately because
-              just redirecting back to /signup form give the users no
+              just redirecting back to /signup form gives the users no
               idea about what's wrong! *)
       respond_redirect "/signup"
 
@@ -58,7 +68,7 @@ let callback _conn req body =
   match (meth, split_path path) with
   | `GET, [] -> respond_ok Form.home
   | `GET, [ "signup" ] -> respond_ok Form.signup
-  | `POST, [ "create_user" ] -> form_handler body
+  | `POST, [ "signup" ] -> form_handler body
   | _ -> Server.respond_not_found ()
 
 let server =

@@ -12,11 +12,11 @@ let send_request meth path body =
 let test_get_home _ () =
   let expected_code = 200 in
   let expected_body =
-    "<div>\n\
-    \  Hello, Welcome to expense tracker!\n\
-    \  <br/>\n\
-    \  <a href=\"signup\"> Sign up </a>\n\
-     </div>"
+    "<html><head><title>Expense tracker</title></head><body><div>\n\
+    \        Hello, Welcome to expense tracker!\n\
+    \        <br/>\n\
+    \        <div><a href=\"signup\"> Sign up </a> </div>\n\
+    \      </div></body></html>"
   in
   send_request `GET "/" None >>= fun (actual_code, actual_body) ->
   Alcotest.(check int) "same status code" expected_code actual_code;
@@ -62,8 +62,7 @@ let test_post_create_user _ () =
   let expected_code = 200 in
   let expected_body = "User John Doe created successfully!\n" in
   body >>= fun body ->
-  send_request `POST "/create_user" (Some body)
-  >>= fun (actual_code, actual_body) ->
+  send_request `POST "/signup" (Some body) >>= fun (actual_code, actual_body) ->
   Alcotest.(check int) "same status code" expected_code actual_code;
   Alcotest.(check string) "same body" expected_body actual_body;
   Lwt.return ()
@@ -75,7 +74,7 @@ let callback _conn req _body =
   match (meth, App.split_path path) with
   | `GET, [] -> App.respond_ok Form.home
   | `GET, [ "signup" ] -> App.respond_ok Form.signup
-  | `POST, [ "create_user" ] ->
+  | `POST, [ "signup" ] ->
       body >>= fun body -> Server.respond_string ~status:`OK ~body ()
   | _ -> Server.respond_not_found ()
 
