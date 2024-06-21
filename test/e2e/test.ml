@@ -72,7 +72,7 @@ let callback _conn req _body =
   let meth = Request.meth req in
   let path = Uri.path uri in
   match (meth, App.split_path path) with
-  | `GET, [] -> App.respond_ok Form.home
+  | `GET, [] -> App.root_handler req
   | `GET, [ "signup" ] -> App.respond_ok Form.signup
   | `POST, [ "signup" ] ->
       body >>= fun body -> Server.respond_string ~status:`OK ~body ()

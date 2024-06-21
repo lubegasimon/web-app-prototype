@@ -3,7 +3,7 @@ open Html
 
 let title = title (txt "Expense tracker")
 
-let home =
+let site_home =
   let%html home =
     {|
       <div>
@@ -12,6 +12,16 @@ let home =
         <div><a href = 'signup'> Sign up </a> </div>
       </div>
    |}
+  in
+  html (head title []) (body [ home ])
+
+let user_home =
+  let%html home =
+    {|
+        <div>
+          Hello, you're now logged in!
+        </div>
+     |}
   in
   html (head title []) (body [ home ])
 

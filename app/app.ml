@@ -31,7 +31,7 @@ let form_handler body =
   let respond_redirect s = Server.respond_redirect ~uri:(Uri.of_string s) () in
   match password = confirm_password with
   | true -> (
-      (*TODO: We are establishing 2 connection in the same block, can we use one? *)
+      (*TODO: We are establishing 2 connections in the same block, can we use one? *)
       Db.with_connection
         (fun conn -> Model.User.find_user_by_email conn email)
         "DATABASE_URI"
@@ -39,13 +39,21 @@ let form_handler body =
       match res with
       | Ok _ ->
           respond_redirect
-            "/login" (* Email already used, redirect to login form *)
+            "/signup" (* Email already used, redirect to login form *)
       | _ -> (
           Db.with_connection
             (fun conn -> Model.User.create_user conn name email password)
             "DATABASE_URI"
           >>= function
-          | Ok () -> respond_redirect "/"
+          | Ok () ->
+              let body = Form.user_home |> Format.asprintf "%a" Html._pp_elt in
+              Server.respond_string ~status:`OK ~body () >>= fun (res, _) ->
+              let headers =
+                Cohttp.Header.add
+                  (Cohttp.Response.headers res)
+                  "Set-Cookie" "session_id=abc123"
+              in
+              Server.respond_redirect ~headers ~uri:(Uri.of_string "/") ()
           | Error _ ->
               (*FIXME: handle error: (Caqti_error.show err) appropriately because
                 just redirecting back to /signup form gives the users no
@@ -61,12 +69,19 @@ let respond_ok html =
   let body = html |> Format.asprintf "%a" Html._pp_elt in
   Server.respond_string ~status:`OK ~body ()
 
+let root_handler req =
+  let cookies = Cohttp.Cookie.Cookie_hdr.extract (Request.headers req) in
+  let session_id = List.assoc_opt "session_id" cookies in
+  match session_id with
+  | Some _ -> respond_ok Form.user_home
+  | None -> respond_ok Form.site_home
+
 let callback _conn req body =
   let uri = Request.uri req in
   let meth = Request.meth req in
   let path = Uri.path uri in
   match (meth, split_path path) with
-  | `GET, [] -> respond_ok Form.home
+  | `GET, [] -> root_handler req
   | `GET, [ "signup" ] -> respond_ok Form.signup
   | `POST, [ "signup" ] -> form_handler body
   | _ -> Server.respond_not_found ()

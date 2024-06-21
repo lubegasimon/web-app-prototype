@@ -3,7 +3,7 @@ open Html
 
 let form =
   form
-    ~a:[ a_action "create_user"; a_method `Post ]
+    ~a:[ a_action "signup"; a_method `Post ]
     [
       fieldset
         [
