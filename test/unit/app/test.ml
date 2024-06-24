@@ -27,7 +27,10 @@ let test_field_values () =
         ("confirm_password", [ password ]);
       ]
   in
-  Alcotest.(check signup_form_testable) "same form" expected actual
+  match actual with
+  | Ok actual ->
+      Alcotest.(check signup_form_testable) "same form" expected actual
+  | Error err -> raise (failwith err)
 
 let () =
   let open Alcotest in

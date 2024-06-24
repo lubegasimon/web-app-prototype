@@ -32,7 +32,9 @@ let test_get_signup _ () =
 let form_handler body =
   let form_data = Uri.query_of_encoded body in
   let { App.name; email; password; confirm_password } =
-    App.field_values form_data
+    match App.field_values form_data with
+    | Ok fields -> fields
+    | Error err -> raise (failwith err)
   in
   (match password = confirm_password with
   | true -> (
