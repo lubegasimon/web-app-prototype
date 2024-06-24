@@ -14,32 +14,39 @@ let split_path path =
   let segments = String.split_on_char '/' path in
   List.filter (fun seg -> seg <> "") segments
 
-let validate_value_len value field =
-  match String.length value <= 10 with
-  | true -> Ok value
-  | false -> Error (Format.sprintf "Field %s has invalid value length" field)
+(* TODO: write unit test *)
+let field_required field value =
+  match value <> "" with
+  | true -> Ok true
+  | false -> Error (Format.sprintf "Field %s is required!\n" field)
 
 let field_values form_data =
-  let field_value field_name =
-    match List.assoc_opt field_name form_data with
-    | Some x -> List.hd x
-    | None -> failwith (Format.sprintf "Field %s is empty!" field_name)
+  let field_value field =
+    match List.assoc_opt field form_data with
+    | Some x -> List.hd x |> String.trim
+    | None -> failwith (Format.sprintf "Field %s is empty!" field)
+  in
+  let validate field =
+    let value = field_value field in
+    match field_required field value with
+    | Ok _ -> Ok value
+    | Error e -> Error e
   in
   (* TODO: Error handling: when [name] is not the same as [a_name], an internal server error is
      printed, I find that not helpful enough *)
-  let get_value field = validate_value_len (field_value field) field in
-  let name = get_value "name" in
-  let email = field_value "email" in
-  let password = get_value "password" in
-  let confirm_password = field_value "confirm_password" in
+  let name = validate "name" in
+  let email = validate "email" in
+  let password = validate "password" in
+  let confirm_password = validate "confirm_password" in
   Result.bind name (fun name ->
-      Result.bind password (fun password ->
-          (*TODO: How about Error? *)
-          Ok { name; email; password; confirm_password }))
+      Result.bind email (fun email ->
+          Result.bind password (fun password ->
+              Result.bind confirm_password (fun confirm_password ->
+                  Ok { name; email; password; confirm_password }))))
 
 let form_handler body =
-  Cohttp_lwt.Body.to_string body >>= fun body_str ->
-  let form_data = Uri.query_of_encoded body_str in
+  Cohttp_lwt.Body.to_string body >>= fun body ->
+  let form_data = Uri.query_of_encoded body in
   match field_values form_data with
   | Error err -> Server.respond_error ~status:`Bad_request ~body:err ()
   | Ok { name; email; password; confirm_password } -> (
