@@ -73,7 +73,7 @@ let callback _conn req _body =
   let uri = Request.uri req in
   let meth = Request.meth req in
   let path = Uri.path uri in
-  match (meth, App.split_path path) with
+  match (meth, App.sanitize_path path) with
   | `GET, [] -> App.root_handler req
   | `GET, [ "signup" ] -> App.respond_ok Form.signup
   | `POST, [ "signup" ] ->

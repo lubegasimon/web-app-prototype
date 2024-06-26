@@ -10,7 +10,7 @@ type signup_form = {
 }
 [@@deriving eq]
 
-let split_path path =
+let sanitize_path path =
   let segments = String.split_on_char '/' path in
   List.filter (fun seg -> seg <> "") segments
 
@@ -24,7 +24,7 @@ let field_values form_data =
   let field_value field =
     match List.assoc_opt field form_data with
     | Some x -> List.hd x |> String.trim
-    | None -> failwith (Error.to_string (Empty_field field))
+    | None -> Error.to_string (Empty_field field)
   in
   let validate field =
     let value = field_value field in
@@ -124,7 +124,7 @@ let callback _conn req body =
   let uri = Request.uri req in
   let meth = Request.meth req in
   let path = Uri.path uri in
-  match (meth, split_path path) with
+  match (meth, sanitize_path path) with
   | `GET, [] -> root_handler req
   | `GET, [ "signup" ] -> respond_ok Form.signup
   | `POST, [ "signup" ] -> form_handler body

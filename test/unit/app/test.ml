@@ -8,9 +8,9 @@ let pp_signup_form fmt form =
 let equal_form form1 form2 = equal_signup_form form1 form2
 let signup_form_testable = Alcotest.testable pp_signup_form equal_form
 
-let test_split_path () =
+let test_sanitize_path () =
   let expected = [ "http:"; "localhost:8000"; "signup" ] in
-  let actual = split_path "http://localhost:8000/signup/" in
+  let actual = sanitize_path "http://localhost:8000/signup/" in
   Alcotest.(check (list string)) "same lists" expected actual
 
 let test_field_values () =
@@ -36,7 +36,8 @@ let () =
   let open Alcotest in
   run "Functions"
     [
-      ("split_path_case", [ test_case "Split path" `Quick test_split_path ]);
+      ( "sanitize_path_case",
+        [ test_case "Split path" `Quick test_sanitize_path ] );
       ( "field_values_case",
         [ test_case "Field values" `Quick test_field_values ] );
     ]
