@@ -14,30 +14,14 @@ let sanitize_path path =
   let segments = String.split_on_char '/' path in
   List.filter (fun seg -> seg <> "") segments
 
-(* TODO: write unit test *)
-let field_required field value =
-  match value <> "" with
-  | true -> Ok true
-  | false -> Error (Error.to_string (Required_field field))
-
-let field_values form_data =
-  let field_value field =
-    match List.assoc_opt field form_data with
-    | Some x -> List.hd x |> String.trim
-    | None -> Error.to_string (Empty_field field)
-  in
-  let validate field =
-    let value = field_value field in
-    match field_required field value with
-    | Ok _ -> Ok value
-    | Error e -> Error e
-  in
+let validate_signup_form form =
+  let open Validate in
   (* TODO: Error handling: when [name] is not the same as [a_name], an internal server error is
      printed, I find that not helpful enough *)
-  let name = validate "name" in
-  let email = validate "email" in
-  let password = validate "password" in
-  let confirm_password = validate "confirm_password" in
+  let name = validate_form form "name" in
+  let email = validate_form form "email" in
+  let password = validate_form form "password" in
+  let confirm_password = validate_form form "confirm_password" in
   Result.bind name (fun name ->
       Result.bind email (fun email ->
           Result.bind password (fun password ->
@@ -46,8 +30,8 @@ let field_values form_data =
 
 let form_handler body =
   Cohttp_lwt.Body.to_string body >>= fun body ->
-  let form_data = Uri.query_of_encoded body in
-  match field_values form_data with
+  let form = Uri.query_of_encoded body in
+  match validate_signup_form form with
   | Error err -> Server.respond_error ~status:`Bad_request ~body:err ()
   | Ok { name; email; password; confirm_password } -> (
       match password = confirm_password with

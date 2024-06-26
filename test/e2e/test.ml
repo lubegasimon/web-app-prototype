@@ -30,9 +30,9 @@ let test_get_signup _ () =
   Lwt.return ()
 
 let form_handler body =
-  let form_data = Uri.query_of_encoded body in
+  let form = Uri.query_of_encoded body in
   let { App.name; email; password; confirm_password } =
-    match App.field_values form_data with
+    match App.validate_signup_form form with
     | Ok fields -> fields
     | Error err -> raise (failwith err)
   in

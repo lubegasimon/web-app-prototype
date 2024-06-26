@@ -19,7 +19,7 @@ let test_field_values () =
   let password = "johndoe" in
   let expected = { name; email; password; confirm_password = password } in
   let actual =
-    field_values
+    validate_signup_form
       [
         ("name", [ name ]);
         ("email", [ email ]);
