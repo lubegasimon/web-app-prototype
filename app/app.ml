@@ -53,7 +53,7 @@ let form_handler body =
               >>= function
               | Ok () -> (
                   let body =
-                    Form.user_home |> Format.asprintf "%a" Html._pp_elt
+                    Form.user_home_page |> Format.asprintf "%a" Html._pp_elt
                   in
                   Server.respond_string ~status:`OK ~body () >>= fun _ ->
                   let session_id =
@@ -101,8 +101,8 @@ let root_handler req =
   let cookies = Cohttp.Cookie.Cookie_hdr.extract (Request.headers req) in
   let session_id = List.assoc_opt "session_id" cookies in
   match session_id with
-  | Some _ -> respond_ok Form.user_home
-  | None -> respond_ok Form.site_home
+  | Some _ -> respond_ok Form.user_home_page
+  | None -> respond_ok Form.visitor_home_page
 
 let callback _conn req body =
   let uri = Request.uri req in
