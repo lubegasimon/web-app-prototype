@@ -18,13 +18,13 @@ let split_path path =
 let field_required field value =
   match value <> "" with
   | true -> Ok true
-  | false -> Error (Format.sprintf "Field %s is required!\n" field)
+  | false -> Error (Error.to_string (Required_field field))
 
 let field_values form_data =
   let field_value field =
     match List.assoc_opt field form_data with
     | Some x -> List.hd x |> String.trim
-    | None -> failwith (Format.sprintf "Field %s is empty!" field)
+    | None -> failwith (Error.to_string (Empty_field field))
   in
   let validate field =
     let value = field_value field in
@@ -60,7 +60,8 @@ let form_handler body =
           match res with
           | Ok _ ->
               Server.respond_error ~status:`Conflict
-                ~body:"Email already used!\n" ()
+                ~body:(Error.to_string Email_used)
+                ()
           | _ -> (
               Db.with_connection
                 (fun conn -> Model.User.create_user conn name email password)
@@ -97,19 +98,16 @@ let form_handler body =
                         ()
                   | Error err ->
                       Server.respond_error ~status:`Internal_server_error
-                        ~body:
-                          (Format.sprintf "Database error: %s\n"
-                             (Caqti_error.show err))
+                        ~body:(Error.to_string (Database_error err))
                         ())
               | Error err ->
                   Server.respond_error ~status:`Internal_server_error
-                    ~body:
-                      (Format.sprintf "Database error: %s\n"
-                         (Caqti_error.show err))
+                    ~body:(Error.to_string (Database_error err))
                     ()))
       | false ->
           Server.respond_error ~status:`Unauthorized
-            ~body:"Passwords don't match!\n" ())
+            ~body:(Error.to_string Password_mismatch)
+            ())
 
 let respond_ok html =
   let body = html |> Format.asprintf "%a" Html._pp_elt in
