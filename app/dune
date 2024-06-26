@@ -1,5 +1,5 @@
 (library
  (name app)
- (libraries cohttp-lwt-unix tyxml form model db)
+ (libraries cohttp-lwt-unix tyxml form model db uuidm)
  (preprocess
   (pps ppx_deriving.eq)))

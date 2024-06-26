@@ -52,7 +52,7 @@ let form_handler body =
   | Ok { name; email; password; confirm_password } -> (
       match password = confirm_password with
       | true -> (
-          (*TODO: We are establishing 2 connections in the same block, can we use one? *)
+          (*TODO: We are establishing 3 connections in the same block, can we use one? *)
           Db.with_connection
             (fun conn -> Model.User.find_user_by_email conn email)
             "DATABASE_URI"
@@ -66,17 +66,41 @@ let form_handler body =
                 (fun conn -> Model.User.create_user conn name email password)
                 "DATABASE_URI"
               >>= function
-              | Ok () ->
+              | Ok () -> (
                   let body =
                     Form.user_home |> Format.asprintf "%a" Html._pp_elt
                   in
-                  Server.respond_string ~status:`OK ~body () >>= fun (res, _) ->
-                  let headers =
-                    Cohttp.Header.add
-                      (Cohttp.Response.headers res)
-                      "Set-Cookie" "session_id=abc123"
+                  Server.respond_string ~status:`OK ~body () >>= fun _ ->
+                  let session_id =
+                    Uuidm.v4 (Bytes.create 16) |> Uuidm.to_string
                   in
-                  Server.respond_redirect ~headers ~uri:(Uri.of_string "/") ()
+                  let csrf_token =
+                    Uuidm.v4 (Bytes.create 16) |> Uuidm.to_string
+                  in
+                  Db.with_connection
+                    (fun conn ->
+                      Model.User_session.create_user_session conn session_id
+                        csrf_token email)
+                    "DATABASE_URI"
+                  >>= fun res ->
+                  match res with
+                  | Ok () ->
+                      let headers =
+                        Cohttp.Header.of_list
+                          [
+                            ( "Set-Cookie",
+                              Format.sprintf "session_id=%s" session_id );
+                            ("X-Csrf-Token", Format.sprintf "%s" csrf_token);
+                          ]
+                      in
+                      Server.respond_redirect ~headers ~uri:(Uri.of_string "/")
+                        ()
+                  | Error err ->
+                      Server.respond_error ~status:`Internal_server_error
+                        ~body:
+                          (Format.sprintf "Database error: %s\n"
+                             (Caqti_error.show err))
+                        ())
               | Error err ->
                   Server.respond_error ~status:`Internal_server_error
                     ~body:
