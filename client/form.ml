@@ -23,6 +23,9 @@ let user_home_page =
         </div>
      |}
   in
-  html (head title []) (body [ home ])
+  let logout_btn =
+    form ~a:[ a_action "logout"; a_method `Post ] [ button [ txt "logout" ] ]
+  in
+  html (head title []) (body [ home; logout_btn ])
 
 let signup = html (head title []) (body [ Signup.form ])

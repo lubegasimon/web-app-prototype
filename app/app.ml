@@ -104,6 +104,23 @@ let root_handler req =
   | Some _ -> respond_ok Form.user_home_page
   | None -> respond_ok Form.visitor_home_page
 
+let logout_handler req =
+  let cookies = Cohttp.Cookie.Cookie_hdr.extract (Request.headers req) in
+  let session_id = List.assoc_opt "session_id" cookies in
+  match session_id with
+  | Some id -> (
+      Db.with_connection
+        (fun conn -> Model.User_session.close_session conn id)
+        "DATABASE_URI"
+      >>= fun res ->
+      match res with
+      | Ok _ -> Server.respond_redirect ~uri:(Uri.of_string "/signup") ()
+      | Error err ->
+          Server.respond_error ~status:`Internal_server_error
+            ~body:(Error.to_string (Database_error err))
+            ())
+  | None -> Server.respond_redirect ~uri:(Uri.of_string "/signup") ()
+
 let callback _conn req body =
   let uri = Request.uri req in
   let meth = Request.meth req in
@@ -112,6 +129,7 @@ let callback _conn req body =
   | `GET, [] -> root_handler req
   | `GET, [ "signup" ] -> respond_ok Form.signup
   | `POST, [ "signup" ] -> form_handler body
+  | `POST, [ "logout" ] -> logout_handler req
   | _ -> Server.respond_not_found ()
 
 let server =
