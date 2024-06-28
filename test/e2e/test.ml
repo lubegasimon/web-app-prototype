@@ -30,9 +30,10 @@ let test_get_signup _ () =
   Lwt.return ()
 
 let signup_handler body =
+  let open Handler in
   let form = Uri.query_of_encoded body in
-  let { App.name; email; password; confirm_password } =
-    match App.validate_signup_form form with
+  let { Signup.name; email; password; confirm_password } =
+    match Signup.validate_form form with
     | Ok fields -> fields
     | Error err -> raise (failwith err)
   in
@@ -74,8 +75,10 @@ let callback _conn req _body =
   let meth = Request.meth req in
   let path = Uri.path uri in
   match (meth, App.sanitize_path path) with
-  | `GET, [] -> App.root_handler req
-  | `GET, [ "signup" ] -> App.respond_ok Form.signup
+  | `GET, [] -> Handler.Root.root req
+  | `GET, [ "signup" ] ->
+      let body = Form.signup |> Format.asprintf "%a" Tyxml.Html._pp_elt in
+      Server.respond_string ~status:`OK ~body ()
   | `POST, [ "signup" ] ->
       body >>= fun body -> Server.respond_string ~status:`OK ~body ()
   | _ -> Server.respond_not_found ()

@@ -1,3 +1,3 @@
 (library
  (name middleware)
- (libraries fmt.tty logs))
+ (libraries caqti fmt.tty logs))

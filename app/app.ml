@@ -1,215 +1,23 @@
 open Lwt
 open Cohttp_lwt_unix
-open Tyxml
-
-type signup_form = {
-  name : string;
-  email : string;
-  password : string;
-  confirm_password : string;
-}
-[@@deriving eq]
-
-type change_password_form = {
-  old_password : string;
-  new_password : string;
-      (* TODO: later we might need confirm_new_password field *)
-}
 
 let sanitize_path path =
   let segments = String.split_on_char '/' path in
   List.filter (fun seg -> seg <> "") segments
 
-let validate_signup_form form =
-  let open Validate in
-  (* TODO: Error handling: when [name] is not the same as [a_name], an internal server error is
-     printed, I find that not helpful enough *)
-  let name = validate_form form "name" in
-  let email = validate_form form "email" in
-  let password = validate_form form "password" in
-  let confirm_password = validate_form form "confirm_password" in
-  Result.bind name (fun name ->
-      Result.bind email (fun email ->
-          Result.bind password (fun password ->
-              Result.bind confirm_password (fun confirm_password ->
-                  Ok { name; email; password; confirm_password }))))
-
-let signup_handler body =
-  Cohttp_lwt.Body.to_string body >>= fun body ->
-  let form = Uri.query_of_encoded body in
-  match validate_signup_form form with
-  | Error err -> Server.respond_error ~status:`Bad_request ~body:err ()
-  | Ok { name; email; password; confirm_password } -> (
-      match password = confirm_password with
-      | true -> (
-          (*TODO: We are establishing 3 connections in the same block, can we use one? *)
-          Db.with_connection
-            (fun conn -> Model.User.find_user_by_email conn email)
-            "DATABASE_URI"
-          >>= fun res ->
-          match res with
-          | Ok _ ->
-              Server.respond_error ~status:`Conflict
-                ~body:(Error.to_string Email_used)
-                ()
-          | _ -> (
-              Db.with_connection
-                (fun conn -> Model.User.create_user conn name email password)
-                "DATABASE_URI"
-              >>= function
-              | Ok () -> (
-                  let body =
-                    Form.user_home_page |> Format.asprintf "%a" Html._pp_elt
-                  in
-                  Server.respond_string ~status:`OK ~body () >>= fun _ ->
-                  let session_id =
-                    Uuidm.v4 (Bytes.create 16) |> Uuidm.to_string
-                  in
-                  let csrf_token =
-                    Uuidm.v4 (Bytes.create 16) |> Uuidm.to_string
-                  in
-                  Db.with_connection
-                    (fun conn ->
-                      Model.User_session.create_user_session conn session_id
-                        csrf_token email)
-                    "DATABASE_URI"
-                  >>= fun res ->
-                  match res with
-                  | Ok () ->
-                      let headers =
-                        Cohttp.Header.of_list
-                          [
-                            ( "Set-Cookie",
-                              Format.sprintf "session_id=%s" session_id );
-                            ( "Set-Cookie",
-                              Format.sprintf "csrf-token=%s" csrf_token );
-                          ]
-                      in
-                      Server.respond_redirect ~headers ~uri:(Uri.of_string "/")
-                        ()
-                  | Error err ->
-                      Server.respond_error ~status:`Internal_server_error
-                        ~body:(Error.to_string (Database_error err))
-                        ())
-              | Error err ->
-                  Server.respond_error ~status:`Internal_server_error
-                    ~body:(Error.to_string (Database_error err))
-                    ()))
-      | false ->
-          Server.respond_error ~status:`Unauthorized
-            ~body:(Error.to_string Password_mismatch)
-            ())
-
-let respond_ok html =
-  let body = html |> Format.asprintf "%a" Html._pp_elt in
-  Server.respond_string ~status:`OK ~body ()
-
-let root_handler req =
-  let cookies = Cohttp.Cookie.Cookie_hdr.extract (Request.headers req) in
-  let session_id = List.assoc_opt "session_id" cookies in
-  match session_id with
-  | Some _ -> respond_ok Form.user_home_page
-  | None -> respond_ok Form.visitor_home_page
-
-let logout_handler req =
-  let cookies = Cohttp.Cookie.Cookie_hdr.extract (Request.headers req) in
-  let session_id = List.assoc_opt "session_id" cookies in
-  match session_id with
-  | Some id -> (
-      Db.with_connection
-        (fun conn -> Model.User_session.close_session conn id)
-        "DATABASE_URI"
-      >>= fun res ->
-      match res with
-      | Ok _ -> Server.respond_redirect ~uri:(Uri.of_string "/signup") ()
-      | Error err ->
-          Server.respond_error ~status:`Internal_server_error
-            ~body:(Error.to_string (Database_error err))
-            ())
-  | None -> Server.respond_redirect ~uri:(Uri.of_string "/signup") ()
-
-let validate_change_password_form form =
-  let open Validate in
-  let old_password = validate_form form "old_password" in
-  let new_password = validate_form form "new_password" in
-  Result.bind old_password (fun old_password ->
-      Result.bind new_password (fun new_password ->
-          Ok { old_password; new_password }))
-
-let change_password_handler req body =
-  let cookies = Cohttp.Cookie.Cookie_hdr.extract (Request.headers req) in
-  let session_id = List.assoc_opt "session_id" cookies in
-  (* let csrf_token = Cohttp.Header.get (Request.headers req) "csrf_token" in *)
-  let csrf_token = List.assoc_opt "csrf-token" cookies in
-  match session_id with
-  | Some id -> (
-      (*TODO: We are establishing 3 connections in the same block, can we use one? *)
-      Db.with_connection
-        (fun conn -> Model.User_session.get_session conn id)
-        "DATABASE_URI"
-      >>= fun res ->
-      match res with
-      | Ok (Some (token, email)) -> (
-          if token <> Option.get csrf_token then
-            Server.respond_error ~status:`Bad_request ~body:"Invalid csrf token"
-              ()
-          else
-            Db.with_connection
-              (fun conn -> Model.User.find_user_password_by_email conn email)
-              "DATABASE_URI"
-            >>= fun res ->
-            match res with
-            | Ok password -> (
-                Cohttp_lwt.Body.to_string body >>= fun body ->
-                let form = Uri.query_of_encoded body in
-                match validate_change_password_form form with
-                | Ok { old_password; new_password } ->
-                    (* TODO: Don't perform operation if old_password = new_password, instead notify the user *)
-                    if Option.get password = old_password then
-                      Db.with_connection
-                        (fun conn ->
-                          Model.User.update_user conn new_password email)
-                        "DATABASE_URI"
-                      >>= fun res ->
-                      match res with
-                      | Ok _ ->
-                          Server.respond_string ~status:`OK
-                            ~body:"Password successfully changed!" ()
-                      | Error err ->
-                          Server.respond_error ~status:`Internal_server_error
-                            ~body:(Error.to_string (Database_error err))
-                            ()
-                    else
-                      Server.respond_error ~status:`Conflict
-                        ~body:(Error.to_string Password_mismatch)
-                        ()
-                | Error err ->
-                    Server.respond_error ~status:`Conflict
-                      ~body:
-                        (Format.sprintf "Error: '%s' in change_password form!"
-                           err)
-                      ())
-            | Error err ->
-                Server.respond_error ~status:`Internal_server_error
-                  ~body:(Error.to_string (Database_error err))
-                  ())
-      | Ok None -> Server.respond_redirect ~uri:(Uri.of_string "/signup") ()
-      | Error err ->
-          Server.respond_error ~status:`Internal_server_error
-            ~body:(Error.to_string (Database_error err))
-            ())
-  | None -> Server.respond_redirect ~uri:(Uri.of_string "/signup") ()
-
 let callback _conn req body =
+  let open Handler in
   let uri = Request.uri req in
   let meth = Request.meth req in
   let path = Uri.path uri in
   match (meth, sanitize_path path) with
-  | `GET, [] -> root_handler req
-  | `GET, [ "signup" ] -> respond_ok Form.signup
-  | `POST, [ "signup" ] -> signup_handler body
-  | `POST, [ "logout" ] -> logout_handler req
-  | `POST, [ "change_password" ] -> change_password_handler req body
+  | `GET, [] -> Root.root req
+  | `GET, [ "signup" ] ->
+      let body = Form.signup |> Format.asprintf "%a" Tyxml.Html._pp_elt in
+      Server.respond_string ~status:`OK ~body ()
+  | `POST, [ "signup" ] -> Signup.signup body
+  | `POST, [ "logout" ] -> Logout.logout req
+  | `POST, [ "change_password" ] -> Password.change_password req body
   | _ -> Server.respond_not_found ()
 
 let server =
