@@ -1,3 +1,3 @@
 (library
  (name middleware)
- (libraries caqti fmt.tty logs))
+ (libraries caqti cohttp fmt.tty logs uuidm))

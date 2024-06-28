@@ -16,6 +16,8 @@ let validate_form form =
       Result.bind new_password (fun new_password ->
           Ok { old_password; new_password }))
 
+let respond_error status body = Server.respond_error ~status ~body ()
+
 let change_password req body =
   let cookies = Cohttp.Cookie.Cookie_hdr.extract (Request.headers req) in
   let session_id = List.assoc_opt "session_id" cookies in
@@ -31,8 +33,7 @@ let change_password req body =
       match res with
       | Ok (Some (token, email)) -> (
           if token <> Option.get csrf_token then
-            Server.respond_error ~status:`Bad_request ~body:"Invalid csrf token"
-              ()
+            respond_error `Bad_request "Invalid csrf token"
           else
             Db.with_connection
               (fun conn -> Model.User.find_user_password_by_email conn email)
@@ -56,26 +57,20 @@ let change_password req body =
                           Server.respond_string ~status:`OK
                             ~body:"Password successfully changed!" ()
                       | Error err ->
-                          Server.respond_error ~status:`Internal_server_error
-                            ~body:(Error.to_string (Database_error err))
-                            ()
+                          respond_error `Internal_server_error
+                            (Error.to_string (Database_error err))
                     else
-                      Server.respond_error ~status:`Conflict
-                        ~body:(Error.to_string Password_mismatch)
-                        ()
+                      respond_error `Conflict
+                        (Error.to_string Password_mismatch)
                 | Error err ->
-                    Server.respond_error ~status:`Conflict
-                      ~body:
-                        (Format.sprintf "Error: '%s' in change_password form!"
-                           err)
-                      ())
+                    respond_error `Conflict
+                      (Format.sprintf "Error: '%s' in change_password form!" err)
+                )
             | Error err ->
-                Server.respond_error ~status:`Internal_server_error
-                  ~body:(Error.to_string (Database_error err))
-                  ())
+                respond_error `Internal_server_error
+                  (Error.to_string (Database_error err)))
       | Ok None -> Server.respond_redirect ~uri:(Uri.of_string "/signup") ()
       | Error err ->
-          Server.respond_error ~status:`Internal_server_error
-            ~body:(Error.to_string (Database_error err))
-            ())
+          respond_error `Internal_server_error
+            (Error.to_string (Database_error err)))
   | None -> Server.respond_redirect ~uri:(Uri.of_string "/signup") ()
