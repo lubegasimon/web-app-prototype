@@ -11,6 +11,15 @@ module Q = struct
 
   let find_user_by_email =
     (string ->! string) @@ {| SELECT name from users WHERE email = ? |}
+
+  let find_user_password_by_email =
+    (string ->! string) @@ {| SELECT password from users WHERE email = ? |}
+
+  let update_user =
+    (tup2 string string ->. unit)
+    @@ {|
+      UPDATE users SET password = ? WHERE email = ?
+    |}
 end
 
 let create_user (module Db : Caqti_lwt.CONNECTION) name email password =
@@ -18,3 +27,9 @@ let create_user (module Db : Caqti_lwt.CONNECTION) name email password =
 
 let find_user_by_email (module Db : Caqti_lwt.CONNECTION) =
   Db.find_opt Q.find_user_by_email
+
+let find_user_password_by_email (module Db : Caqti_lwt.CONNECTION) =
+  Db.find_opt Q.find_user_password_by_email
+
+let update_user (module Db : Caqti_lwt.CONNECTION) new_password email =
+  Db.exec Q.update_user (new_password, email)
