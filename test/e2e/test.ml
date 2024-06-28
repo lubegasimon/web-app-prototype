@@ -29,7 +29,7 @@ let test_get_signup _ () =
   Alcotest.(check int) "same status code" expected_code actual_code;
   Lwt.return ()
 
-let form_handler body =
+let signup_handler body =
   let form = Uri.query_of_encoded body in
   let { App.name; email; password; confirm_password } =
     match App.validate_signup_form form with
@@ -58,7 +58,7 @@ let body =
         ("confirm_password", [ "johndoe" ]);
       ]
   in
-  form_handler body >>= fun body -> Lwt.return body
+  signup_handler body >>= fun body -> Lwt.return body
 
 let test_post_create_user _ () =
   let expected_code = 200 in

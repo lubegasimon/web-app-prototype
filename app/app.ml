@@ -34,7 +34,7 @@ let validate_signup_form form =
               Result.bind confirm_password (fun confirm_password ->
                   Ok { name; email; password; confirm_password }))))
 
-let form_handler body =
+let signup_handler body =
   Cohttp_lwt.Body.to_string body >>= fun body ->
   let form = Uri.query_of_encoded body in
   match validate_signup_form form with
@@ -207,7 +207,7 @@ let callback _conn req body =
   match (meth, sanitize_path path) with
   | `GET, [] -> root_handler req
   | `GET, [ "signup" ] -> respond_ok Form.signup
-  | `POST, [ "signup" ] -> form_handler body
+  | `POST, [ "signup" ] -> signup_handler body
   | `POST, [ "logout" ] -> logout_handler req
   | `POST, [ "change_password" ] -> change_password_handler req body
   | _ -> Server.respond_not_found ()
