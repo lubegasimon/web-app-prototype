@@ -75,7 +75,8 @@ let form_handler body =
                           [
                             ( "Set-Cookie",
                               Format.sprintf "session_id=%s" session_id );
-                            ("X-Csrf-Token", Format.sprintf "%s" csrf_token);
+                            ( "Set-Cookie",
+                              Format.sprintf "csrf-token=%s" csrf_token );
                           ]
                       in
                       Server.respond_redirect ~headers ~uri:(Uri.of_string "/")
