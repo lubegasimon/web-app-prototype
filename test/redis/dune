@@ -1,0 +1,3 @@
+(test
+ (name redis)
+ (libraries alcotest-lwt middleware redis-lwt))
