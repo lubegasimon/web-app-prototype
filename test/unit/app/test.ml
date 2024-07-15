@@ -8,6 +8,12 @@ let pp_signup_form fmt form =
 let equal_form form1 form2 = Signup.equal_signup_form form1 form2
 let signup_form_testable = Alcotest.testable pp_signup_form equal_form
 
+let validate_form_test () =
+  let body = [ ("name", [ "lubega" ]); ("age", [ "26" ]) ] in
+  let actual = Middleware.Validate.validate_form body "name" |> Result.get_ok in
+  let expected = "lubega" in
+  Alcotest.(check string) "same name" actual expected
+
 let test_sanitize_path () =
   let expected = [ "http:"; "localhost:8000"; "signup" ] in
   let actual = App.sanitize_path "http://localhost:8000/signup/" in
@@ -42,4 +48,6 @@ let () =
         [ test_case "Split path" `Quick test_sanitize_path ] );
       ( "field_values_case",
         [ test_case "Field values" `Quick test_field_values ] );
+      ( "validate_form test",
+        [ test_case "validate_form test" `Quick validate_form_test ] );
     ]
