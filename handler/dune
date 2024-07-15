@@ -1,5 +1,5 @@
 (library
  (name handler)
- (libraries cohttp-lwt-unix tyxml form model db middleware)
+ (libraries cohttp-lwt-unix tyxml form model db middleware redis-lwt)
  (preprocess
   (pps ppx_deriving.eq)))
