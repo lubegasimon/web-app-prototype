@@ -10,10 +10,10 @@ module Q = struct
   |}
 
   let find_user_by_email =
-    (string ->! string) @@ {| SELECT name from users WHERE email = ? |}
+    (string ->! string) @@ {| SELECT name FROM users WHERE email = ? |}
 
   let find_user_password_by_email =
-    (string ->! string) @@ {| SELECT password from users WHERE email = ? |}
+    (string ->! string) @@ {| SELECT password FROM users WHERE email = ? |}
 
   let update_user =
     (tup2 string string ->. unit)

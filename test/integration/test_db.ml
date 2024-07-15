@@ -67,10 +67,27 @@ let test_if_user_created _ () =
       Lwt.return
       @@ Format.printf "Error during testing: %s" (Caqti_error.show err)
 
+let test_find_user_password_by_email _ () =
+  Db.connect db_uri >>= function
+  | Ok conn -> (
+      Model.User.find_user_password_by_email conn "johndoe@gmail.com"
+      >>= function
+      | Ok (Some password) ->
+          Alcotest.(check string) "same password" password "johndoe";
+          Lwt.return ()
+      | Ok None -> Alcotest.fail "password not found!\n"
+      | Error err -> Alcotest.fail (Caqti_error.show err))
+  | Error err -> Alcotest.fail (Caqti_error.show err)
+
 let () =
   let open Alcotest_lwt in
   Lwt_main.run
   @@ run "Database queries"
        [
          ("create_user", [ test_case "Create user" `Quick test_if_user_created ]);
+         ( "find user password",
+           [
+             test_case "find user password" `Quick
+               test_find_user_password_by_email;
+           ] );
        ]
