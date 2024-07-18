@@ -70,14 +70,18 @@ let test_post_create_user _ () =
   Alcotest.(check string) "same body" expected_body actual_body;
   Lwt.return ()
 
-let callback _conn req _body =
+let callback _conn req body =
+  let body = Cohttp_lwt.Body.to_string body in
   let uri = Request.uri req in
   let meth = Request.meth req in
   let path = Uri.path uri in
   match (meth, App.sanitize_path path) with
-  | `GET, [] -> Handler.Root.root req
+  | `GET, [] -> Handler.Root.root req body
   | `GET, [ "signup" ] ->
-      let body = Form.signup |> Format.asprintf "%a" Tyxml.Html._pp_elt in
+      let csrf_token = "" in
+      let body =
+        Form.signup csrf_token |> Format.asprintf "%a" Tyxml.Html._pp_elt
+      in
       Server.respond_string ~status:`OK ~body ()
   | `POST, [ "signup" ] ->
       body >>= fun body -> Server.respond_string ~status:`OK ~body ()
