@@ -47,6 +47,13 @@ let user_home_page =
         button [ txt "change password" ];
       ]
   in
-  html (head title []) (body [ home; change_password; logout_btn ])
+  html (head title [])
+    (body
+       [
+         home;
+         change_password;
+         logout_btn;
+         script ~a:[ a_src "/api.js" ] (txt "");
+       ])
 
-let signup = html (head title []) (body [ Signup.form ])
+let signup csrf_token = html (head title []) (body [ Signup.form csrf_token ])
