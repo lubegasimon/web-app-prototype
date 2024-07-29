@@ -41,8 +41,9 @@ let setup_db conn =
           | Error err -> Lwt.return @@ Error err (* Error while fetching user *)
           )
       | Error err -> Lwt.return @@ Error err (* Error while creating user *))
-  | Error err -> Lwt.return (Error err)
-(* error while creating table *)
+  | Error err ->
+      (* error while creating table *)
+      Lwt.return (Error err)
 
 let clean_up conn =
   drop_table conn () >>= function
@@ -70,14 +71,20 @@ let test_if_user_created _ () =
 
 let test_find_user_password_by_email _ () =
   Db.connect db_uri >>= function
-  | Ok conn -> (
-      Model.User.find_user_password_by_email conn "johndoe@gmail.com"
-      >>= function
-      | Ok (Some password) ->
-          Alcotest.(check string) "same password" password "johndoe";
-          Lwt.return ()
-      | Ok None -> Alcotest.fail "password not found!\n"
-      | Error err -> Alcotest.fail (Caqti_error.show err))
+  | Ok conn ->
+      Lwt.finalize
+        (fun () ->
+          setup_db conn >>= function
+          | Ok _ -> (
+              Model.User.find_user_password_by_email conn "johndoe@gmail.com"
+              >>= function
+              | Ok (Some password) ->
+                  Alcotest.(check string) "same password" password "johndoe";
+                  Lwt.return ()
+              | Ok _ -> Alcotest.fail "password not found!\n"
+              | Error err -> Alcotest.fail (Caqti_error.show err))
+          | Error err -> Alcotest.fail (Caqti_error.show err))
+        (fun () -> clean_up conn)
   | Error err -> Alcotest.fail (Caqti_error.show err)
 
 let () =
