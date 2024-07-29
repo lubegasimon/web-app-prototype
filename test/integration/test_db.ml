@@ -44,12 +44,13 @@ let setup_db conn =
   | Error err -> Lwt.return (Error err)
 (* error while creating table *)
 
-let clear_db conn =
+let clean_up conn =
   drop_table conn () >>= function
-  | Ok () -> Lwt_io.printf "Database is cleared\n" >>= fun () -> Lwt.return_unit
+  | Ok () ->
+      Lwt_io.printf "Database is cleaned up\n" >>= fun () -> Lwt.return_unit
   | Error err ->
       Lwt.return
-      @@ Format.printf "Error while clearing database: %s\n"
+      @@ Format.printf "Error while cleaning up database: %s\n"
            (Caqti_error.show err)
 
 let with_connection db_uri =
@@ -57,7 +58,7 @@ let with_connection db_uri =
   | Ok conn ->
       (*FIXME: 🤔This debug print is not printed!! *)
       Lwt_io.printf "Connected to database\n" >>= fun () ->
-      Lwt.finalize (fun () -> setup_db conn) (fun () -> clear_db conn)
+      Lwt.finalize (fun () -> setup_db conn) (fun () -> clean_up conn)
   | Error err -> Lwt.return (Error err)
 
 let test_if_user_created _ () =
