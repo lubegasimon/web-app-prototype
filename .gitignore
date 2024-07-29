@@ -3,3 +3,6 @@ _build
 .env
 .test_env
 .e2e_test_env
+
+.DS_Store
+dump.rdb
