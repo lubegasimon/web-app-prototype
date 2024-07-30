@@ -16,83 +16,67 @@ let create_table (module Db : Caqti_lwt.CONNECTION) =
   in
   Db.exec query
 
+let database_error err = Alcotest.fail (Caqti_error.show err)
+
+let create_user =
+  let name = "johndoe" in
+  let email = "johndoe@gmail.com" in
+  let password = "johndoe" in
+  Db.connect db_uri >>= function
+  | Ok conn -> (
+      create_table conn () >>= function
+      | Ok _ -> (
+          Model.User.create_user conn (name, email, password) >>= function
+          | Ok _ -> Lwt.return ()
+          | Error err -> database_error err)
+      | Error err -> database_error err)
+  | Error err -> database_error err
+
+let test_create_user _ () =
+  Db.connect db_uri >>= function
+  | Ok conn -> (
+      create_user >>= function
+      | () -> (
+          Model.User.find_user_by_email conn "johndoe@gmail.com" >>= function
+          | Ok (Some actual_name) ->
+              Alcotest.(check string) "same name" actual_name "johndoe";
+              Lwt.return ()
+          | Ok None -> Alcotest.fail "User not found in the database!\n"
+          | Error err -> database_error err))
+  | Error err -> database_error err
+
 let drop_table (module Db : Caqti_lwt.CONNECTION) =
   let query = (unit ->. unit) @@ {| DROP TABLE IF EXISTS users |} in
   Db.exec query
 
-let setup_db conn =
-  let name = "johndoe" in
-  let email = "johndoe@gmail.com" in
-  let password = "johndoe" in
-  create_table conn () >>= function
-  | Ok _ -> (
-      (*FIXME: 🤔This debug prints in setup_db are not printed!! *)
-      Lwt_io.printf "Table created\n"
-      >>= fun () ->
-      Model.User.create_user conn name email password >>= function
-      | Ok _ -> (
-          (* Ensure that the user is created *)
-          Model.User.find_user_by_email conn email
-          >>= function
-          | Ok (Some actual_name) ->
-              Alcotest.(check string) "same name" name actual_name;
-              Lwt.return @@ Ok "User found"
-          | Ok None -> Alcotest.fail "User not found in the database!\n"
-          | Error err -> Lwt.return @@ Error err (* Error while fetching user *)
-          )
-      | Error err -> Lwt.return @@ Error err (* Error while creating user *))
-  | Error err ->
-      (* error while creating table *)
-      Lwt.return (Error err)
-
 let clean_up conn =
   drop_table conn () >>= function
-  | Ok () ->
-      Lwt_io.printf "Database is cleaned up\n" >>= fun () -> Lwt.return_unit
-  | Error err ->
-      Lwt.return
-      @@ Format.printf "Error while cleaning up database: %s\n"
-           (Caqti_error.show err)
-
-let with_connection db_uri =
-  Db.connect db_uri >>= function
-  | Ok conn ->
-      (*FIXME: 🤔This debug print is not printed!! *)
-      Lwt_io.printf "Connected to database\n" >>= fun () ->
-      Lwt.finalize (fun () -> setup_db conn) (fun () -> clean_up conn)
-  | Error err -> Lwt.return (Error err)
-
-let test_if_user_created _ () =
-  with_connection db_uri >>= function
-  | Ok _ -> Lwt_io.printf "Test completed successfully\n"
-  | Error err ->
-      Lwt.return
-      @@ Format.printf "Error during testing: %s" (Caqti_error.show err)
+  | Ok _ -> Lwt.return ()
+  | Error err -> database_error err
 
 let test_find_user_password_by_email _ () =
   Db.connect db_uri >>= function
   | Ok conn ->
       Lwt.finalize
         (fun () ->
-          setup_db conn >>= function
-          | Ok _ -> (
+          create_user >>= function
+          | () -> (
               Model.User.find_user_password_by_email conn "johndoe@gmail.com"
               >>= function
               | Ok (Some password) ->
                   Alcotest.(check string) "same password" password "johndoe";
                   Lwt.return ()
               | Ok _ -> Alcotest.fail "password not found!\n"
-              | Error err -> Alcotest.fail (Caqti_error.show err))
-          | Error err -> Alcotest.fail (Caqti_error.show err))
+              | Error err -> database_error err))
         (fun () -> clean_up conn)
-  | Error err -> Alcotest.fail (Caqti_error.show err)
+  | Error err -> database_error err
 
 let () =
   let open Alcotest_lwt in
   Lwt_main.run
   @@ run "Database queries"
        [
-         ("create_user", [ test_case "Create user" `Quick test_if_user_created ]);
+         ("create_user", [ test_case "Create user" `Quick test_create_user ]);
          ( "find user password",
            [
              test_case "find user password" `Quick

@@ -47,7 +47,8 @@ let change_password req body =
                         if Option.get password = old_password then
                           Db.with_connection
                             (fun conn ->
-                              Model.User.update_user conn new_password email)
+                              Model.User.update_user_password conn new_password
+                                email)
                             "DATABASE_URI"
                           >>= function
                           | Ok _ ->

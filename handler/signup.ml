@@ -44,7 +44,8 @@ let signup req body =
             | Ok _ -> respond_error `Conflict (Error.to_string Email_used)
             | _ -> (
                 Db.with_connection
-                  (fun conn -> Model.User.create_user conn name email password)
+                  (fun conn ->
+                    Model.User.create_user conn (name, email, password))
                   "DATABASE_URI"
                 >>= function
                 | Ok () -> (

@@ -40,7 +40,7 @@ let signup_handler body =
   (match password = confirm_password with
   | true -> (
       Db.with_connection
-        (fun conn -> Model.User.create_user conn name email password)
+        (fun conn -> Model.User.create_user conn (name, email, password))
         "E2E_TEST_DATABASE_URI"
       >>= function
       | Ok () ->
