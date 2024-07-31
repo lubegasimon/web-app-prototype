@@ -81,7 +81,7 @@ let test_find_user_password_by_email _ () =
 let test_update_user_password _ () =
   let name = "johndoe" in
   let email = "johndoe@gmail.com" in
-  let password = "johndoe" in
+  let password = "john_doe" in
   Db.connect db_uri >>= function
   | Ok conn ->
       Lwt.finalize
@@ -90,21 +90,17 @@ let test_update_user_password _ () =
           | Ok _ -> (
               Model.User.create_user conn (name, email, password) >>= function
               | Ok _ -> (
-                  let new_password = "doejohn" in
+                  let new_password = "doe_john" in
                   let user_email = "johndoe@gmail.com" in
                   Model.User.update_user_password conn new_password user_email
                   >>= function
-                  | Ok _ -> (
-                      (* TODO: Instead of fetching after update, can we return the updated rows immidiately? *)
-                      (* check if user password is updated *)
-                      Model.User.find_user_password_by_email conn user_email
-                      >>= function
-                      | Ok (Some password) ->
-                          Alcotest.(check string)
-                            "should be same password" password "doejohn";
-                          Lwt.return ()
-                      | Ok None -> Alcotest.fail "Invalid email!\n"
-                      | Error err -> database_error err)
+                  | Ok [ (name, email, password) ] ->
+                      Alcotest.(check (list string))
+                        "should be same data"
+                        (name :: email :: [ password ])
+                        [ "johndoe"; "johndoe@gmail.com"; "doe_john" ];
+                      Lwt.return ()
+                  | Ok _ -> Alcotest.fail "Query returned unexpected rows!\n"
                   | Error err -> database_error err)
               | Error err -> database_error err)
           | Error err -> database_error err)
