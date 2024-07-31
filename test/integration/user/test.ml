@@ -18,6 +18,15 @@ let create_table (module Db : Caqti_lwt.CONNECTION) =
 
 let database_error err = Alcotest.fail (Caqti_error.show err)
 
+let cleanup_db (module Db : Caqti_lwt.CONNECTION) =
+  let drop_table =
+    let query = (unit ->. unit) @@ {| DROP TABLE IF EXISTS users |} in
+    Db.exec query
+  in
+  drop_table () >>= function
+  | Ok _ -> Lwt.return ()
+  | Error err -> database_error err
+
 let test_create_user _ () =
   let name = "johndoe" in
   let email = "johndoe@gmail.com" in
@@ -46,15 +55,6 @@ let test_find_user_by_email _ () =
             [ ("johndoe", "john_doe") ];
           Lwt.return ()
       | Error err -> database_error err)
-  | Error err -> database_error err
-
-let cleanup_db (module Db : Caqti_lwt.CONNECTION) =
-  let drop_table =
-    let query = (unit ->. unit) @@ {| DROP TABLE IF EXISTS users |} in
-    Db.exec query
-  in
-  drop_table () >>= function
-  | Ok _ -> Lwt.return ()
   | Error err -> database_error err
 
 let test_update_user_password _ () =
