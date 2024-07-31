@@ -43,7 +43,7 @@ let signup_handler body =
         (fun conn -> Model.User.create_user conn (name, email, password))
         "E2E_TEST_DATABASE_URI"
       >>= function
-      | Ok () ->
+      | Ok _ ->
           Lwt.return @@ Format.sprintf "User %s created successfully!" name
       | Error err -> Lwt.return @@ Format.sprintf "%s\n" (Caqti_error.show err))
   | false -> Lwt.return @@ Format.sprintf "Passwords don't match!\n")

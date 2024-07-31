@@ -48,7 +48,7 @@ let signup req body =
                     Model.User.create_user conn (name, email, password))
                   "DATABASE_URI"
                 >>= function
-                | Ok () -> (
+                | Ok _ -> (
                     let open Header in
                     let body =
                       Form.user_home_page

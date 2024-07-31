@@ -5,31 +5,26 @@ module type Conn = Caqti_lwt.CONNECTION
 
 let create_user (module Db : Conn) =
   let query =
-    (tup3 string string string ->. unit)
+    (tup3 string string string ->* tup3 string string string)
     @@ {|
     INSERT INTO users (name, email, password)
-    VALUES (?, ?, ?)
+    VALUES (?, ?, ?) RETURNING *
   |}
   in
-  Db.exec query
+  Db.collect_list query
 
 let find_user_by_email (module Db : Conn) =
   let query =
-    (string ->! string) @@ {| SELECT name FROM users WHERE email = ? |}
+    (string ->* tup2 string string)
+    @@ {| SELECT name, password FROM users WHERE email = ? |}
   in
-  Db.find_opt query
-
-let find_user_password_by_email (module Db : Conn) =
-  let query =
-    (string ->! string) @@ {| SELECT password FROM users WHERE email = ? |}
-  in
-  Db.find_opt query
+  Db.collect_list query
 
 let update_user_password (module Db : Conn) new_password email =
   let query =
-    (tup2 string string ->. unit)
+    (tup2 string string ->* tup3 string string string)
     @@ {|
-      UPDATE users SET password = ? WHERE email = ?
+      UPDATE users SET password = ? WHERE email = ? RETURNING *
     |}
   in
-  Db.exec query (new_password, email)
+  Db.collect_list query (new_password, email)

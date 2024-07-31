@@ -34,17 +34,16 @@ let change_password req body =
               let email = List.assoc "email" data |> Yojson.Safe.to_string in
               if is_authenticated then
                 Db.with_connection
-                  (fun conn ->
-                    Model.User.find_user_password_by_email conn email)
+                  (fun conn -> Model.User.find_user_by_email conn email)
                   "DATABASE_URI"
                 >>= function
-                | Ok password -> (
+                | Ok [ (_, password) ] -> (
                     Cohttp_lwt.Body.to_string body >>= fun body ->
                     let form = Uri.query_of_encoded body in
                     match validate_form form with
                     | Ok { old_password; new_password } ->
                         (* TODO: Don't perform operation if old_password = new_password, instead notify the user *)
-                        if Option.get password = old_password then
+                        if password = old_password then
                           Db.with_connection
                             (fun conn ->
                               Model.User.update_user_password conn new_password
@@ -64,6 +63,9 @@ let change_password req body =
                         respond_error `Conflict
                           (Format.sprintf "Error: '%s' in change_password form!"
                              err))
+                | Ok _ ->
+                    respond_error `Internal_server_error
+                      (Error.to_string Unexpected_query_result)
                 | Error err ->
                     respond_error `Internal_server_error
                       (Error.to_string (Database_error err))
