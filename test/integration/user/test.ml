@@ -18,78 +18,97 @@ let create_table (module Db : Caqti_lwt.CONNECTION) =
 
 let database_error err = Alcotest.fail (Caqti_error.show err)
 
-let create_user =
+let drop_table (module Db : Caqti_lwt.CONNECTION) =
+  let query = (unit ->. unit) @@ {| DROP TABLE IF EXISTS users |} in
+  Db.exec query
+
+let clean_up conn =
+  drop_table conn () >>= function
+  | Ok _ -> Lwt.return ()
+  | Error err -> database_error err
+
+let test_create_user _ () =
   let name = "johndoe" in
   let email = "johndoe@gmail.com" in
   let password = "johndoe" in
   Db.connect db_uri >>= function
-  | Ok conn -> (
-      create_table conn () >>= function
-      | Ok _ -> (
-          Model.User.create_user conn (name, email, password) >>= function
-          | Ok _ -> Lwt.return ()
+  | Ok conn ->
+      Lwt.finalize
+        (fun () ->
+          create_table conn () >>= function
+          | Ok _ -> (
+              Model.User.create_user conn (name, email, password) >>= function
+              | Ok _ -> (
+                  Model.User.find_user_by_email conn "johndoe@gmail.com"
+                  >>= function
+                  | Ok (Some actual_name) ->
+                      Alcotest.(check string)
+                        "should be the same name" actual_name "johndoe";
+                      Lwt.return ()
+                  | Ok None -> Alcotest.fail "Invalid email!\n"
+                  | Error err -> database_error err)
+              | Error err -> database_error err)
           | Error err -> database_error err)
-      | Error err -> database_error err)
+        (fun () -> clean_up conn)
   | Error err -> database_error err
-
-let test_create_user _ () =
-  Db.connect db_uri >>= function
-  | Ok conn -> (
-      create_user >>= function
-      | () -> (
-          Model.User.find_user_by_email conn "johndoe@gmail.com" >>= function
-          | Ok (Some actual_name) ->
-              Alcotest.(check string)
-                "should be the same name" actual_name "johndoe";
-              Lwt.return ()
-          | Ok None -> Alcotest.fail "Invalid email!\n"
-          | Error err -> database_error err))
-  | Error err -> database_error err
-
-(* let drop_table (module Db : Caqti_lwt.CONNECTION) =
-     let query = (unit ->. unit) @@ {| DROP TABLE IF EXISTS users |} in
-     Db.exec query
-
-   let clean_up conn =
-     drop_table conn () >>= function
-     | Ok _ -> Lwt.return ()
-     | Error err -> database_error err *)
 
 let test_find_user_password_by_email _ () =
+  let name = "johndoe" in
+  let email = "johndoe@gmail.com" in
+  let password = "johndoe" in
   Db.connect db_uri >>= function
-  | Ok conn -> (
-      create_user >>= function
-      | () -> (
-          Model.User.find_user_password_by_email conn "johndoe@gmail.com"
-          >>= function
-          | Ok (Some password) ->
-              Alcotest.(check string)
-                "should be same password" password "johndoe";
-              Lwt.return ()
-          | Ok None -> Alcotest.fail "Invalid email!\n"
-          | Error err -> database_error err))
+  | Ok conn ->
+      Lwt.finalize
+        (fun () ->
+          create_table conn () >>= function
+          | Ok _ -> (
+              Model.User.create_user conn (name, email, password) >>= function
+              | Ok _ -> (
+                  Model.User.find_user_password_by_email conn
+                    "johndoe@gmail.com"
+                  >>= function
+                  | Ok (Some password) ->
+                      Alcotest.(check string)
+                        "should be same password" password "johndoe";
+                      Lwt.return ()
+                  | Ok None -> Alcotest.fail "Invalid email!\n"
+                  | Error err -> database_error err)
+              | Error err -> database_error err)
+          | Error err -> database_error err)
+        (fun () -> clean_up conn)
   | Error err -> database_error err
 
 let test_update_user_password _ () =
+  let name = "johndoe" in
+  let email = "johndoe@gmail.com" in
+  let password = "johndoe" in
   Db.connect db_uri >>= function
-  | Ok conn -> (
-      create_user >>= function
-      | () -> (
-          let new_password = "doejohn" in
-          let user_email = "johndoe@gmail.com" in
-          Model.User.update_user_password conn new_password user_email
-          >>= function
+  | Ok conn ->
+      Lwt.finalize
+        (fun () ->
+          create_table conn () >>= function
           | Ok _ -> (
-              (* check if user password is updated *)
-              Model.User.find_user_password_by_email conn user_email
-              >>= function
-              | Ok (Some password) ->
-                  Alcotest.(check string)
-                    "should be same password" password "doejohn";
-                  Lwt.return ()
-              | Ok None -> Alcotest.fail "Invalid email!\n"
+              Model.User.create_user conn (name, email, password) >>= function
+              | Ok _ -> (
+                  let new_password = "doejohn" in
+                  let user_email = "johndoe@gmail.com" in
+                  Model.User.update_user_password conn new_password user_email
+                  >>= function
+                  | Ok _ -> (
+                      (* TODO: Instead of fetching after update, can we return the updated rows immidiately? *)
+                      (* check if user password is updated *)
+                      Model.User.find_user_password_by_email conn user_email
+                      >>= function
+                      | Ok (Some password) ->
+                          Alcotest.(check string)
+                            "should be same password" password "doejohn";
+                          Lwt.return ()
+                      | Ok None -> Alcotest.fail "Invalid email!\n"
+                      | Error err -> database_error err)
+                  | Error err -> database_error err)
               | Error err -> database_error err)
-          | Error err -> database_error err))
+          | Error err -> database_error err)
+        (fun () -> clean_up conn)
   | Error err -> database_error err
 
 let () =
