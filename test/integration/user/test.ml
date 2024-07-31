@@ -48,7 +48,7 @@ let test_find_user_by_email _ () =
       | Error err -> database_error err)
   | Error err -> database_error err
 
-let clean_up (module Db : Caqti_lwt.CONNECTION) =
+let cleanup_db (module Db : Caqti_lwt.CONNECTION) =
   let drop_table =
     let query = (unit ->. unit) @@ {| DROP TABLE IF EXISTS users |} in
     Db.exec query
@@ -72,7 +72,7 @@ let test_update_user_password _ () =
                 [ ("johndoe", "johndoe@gmail.com", "doe_john") ];
               Lwt.return ()
           | Error err -> database_error err)
-        (fun () -> clean_up conn)
+        (fun () -> cleanup_db conn)
   | Error err -> database_error err
 
 let () =
