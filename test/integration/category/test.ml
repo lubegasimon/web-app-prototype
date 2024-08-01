@@ -65,13 +65,11 @@ let test_update_category_name _ () =
           let new_name = "Utilities" in
           Model.Category.update_category_name conn new_name curr_name
           >>= function
-          | Ok [ (name, desc, date) ] ->
-              Alcotest.(check (list string))
-                "should return with updated category data"
-                (name :: desc :: [ date ])
-                [ "Utilities"; "Utility e.g water bills"; "2024-07-29" ];
+          | Ok result ->
+              Alcotest.(check (list (triple string string string)))
+                "should return with updated category data" result
+                [ ("Utilities", "Utility e.g water bills", "2024-07-29") ];
               Lwt.return ()
-          | Ok _ -> Alcotest.fail "Query returned unexpected rows!\n"
           | Error err -> database_error err)
         (fun () -> cleanup_db conn)
   | Error err -> database_error err
