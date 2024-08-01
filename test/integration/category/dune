@@ -1,3 +1,9 @@
+(library
+ (name category)
+ (modules helper)
+ (libraries db model alcotest-lwt))
+
 (test
  (name test)
- (libraries db model alcotest-lwt))
+ (modules test)
+ (libraries category db model alcotest-lwt))
